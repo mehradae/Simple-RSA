@@ -11,31 +11,33 @@ int publickey(long int p, long int q, long int* exp, long int* mod);
 int privatekey(long int p, long int q, long int pubexp, long int* exp, long int* mod);
 int encrypt(string msg, long int, long int);
 int decrypt(int arr[] , long int, long int,int size);
-int char2long(char* in, long int* out);
-int long2char(long int* in, char* out);
+long int modinv(long int,long int);
+long int phiFinder(long int n);
 
 
 int main(int argc, char* argv[]) {
     long int p,q, pube, pubmod, prive, privmod;
-    int msg[100];
     if(argc!=5){
         cout << "Not enough arguments, Try again!" << endl;
         exit(1);
     }
     p= atoi(argv[1]);
     q= atoi(argv[2]);
-    if(!prime(p) || !prime(q)){
-        cout << "Not a prime number. Try again!" << endl;
-        exit(1);
-    }
-    publickey(p,q,&pube,&pubmod);
-    std::cout << "public key: " << pube << ", " << pubmod << std::endl;
-    privatekey(p,q,pube,&prive,&privmod);
-    std::cout << "private key: " << prive << ", " << privmod << std::endl;
+
+
+
 
 
     if(strcmp(argv[3],"e")==0) {
+        if(!prime(p) || !prime(q)){
+            cout << "Not a prime number. Try again!" << endl;
+            exit(1);
+        }
         cout << "Entering Encryption zone!" << endl;
+        publickey(p,q,&pube,&pubmod);
+        std::cout << "public key: " << pube << ", " << pubmod << std::endl;
+        privatekey(p,q,pube,&prive,&privmod);
+        std::cout << "private key: " << prive << ", " << privmod << std::endl;
         ifstream inFile;
         inFile.open(argv[4]);
         if (!inFile) {
@@ -66,7 +68,7 @@ int main(int argc, char* argv[]) {
         while(size<100 && inFile>>array[size]){
             ++size;
         }
-        decrypt(array,prive,privmod,size);
+        decrypt(array,p,q,size);
     }
 
 
@@ -154,10 +156,14 @@ int encrypt(string file, long int exp, long int mod)
             i++;
         }
     }
-    ofstream out("output.txt");
+    ofstream out("cipher.txt");
     cout<<endl;
     for(int j=0;j<i;j++){
-        msg[j]= static_cast<int>(static_cast<long int>(pow(msg[j],exp))% mod);
+        int tmp=msg[j];
+        for(int t=0;t<exp-1;t++){
+            msg[j]= static_cast<int>(static_cast<long>(tmp*msg[j])%mod);
+        }
+
         cout<<msg[j]<<" ";
        out<<msg[j]<<" ";
     }
@@ -167,13 +173,16 @@ int encrypt(string file, long int exp, long int mod)
 }
 
 int decrypt(int arr[], long int exp, long int mod,int size)
-//Decrypt an array of long ints
-//exp and mod should be the private key pair
-//Each number, c', is decrypted by
-// c = (c'^exp)%mod
 {
+    long int phi=phiFinder(mod);
+    long int d=modinv(exp,phi);
+    cout<<"d is= "<<d<<endl;
     for(int j=0;j<size;j++){
-        arr[j]= static_cast<int>(static_cast<long int>(pow(arr[j],exp))% mod);
+        int tmp=arr[j];
+        for(int t=0;t<d-1;t++){
+            arr[j]= static_cast<int>(static_cast<long int>(arr[j]*tmp)% mod);
+        }
+
         cout<<arr[j]<<" ";
 
     }
@@ -186,4 +195,56 @@ int decrypt(int arr[], long int exp, long int mod,int size)
             out<<" ";
     }
     return 0;
+}
+long int modinv(long int e, long int phin)
+{
+    long int inv, u1, u3, v1, v3, t1, t3, q;
+    long int iter;
+    u1 = 1;
+    u3 = e;
+    v1 = 0;
+    v3 = phin;
+    iter = 1;
+    while(v3 != 0)
+    {
+        q = u3 / v3;
+        t3 = u3 % v3;
+        t1 = u1 + q * v1;
+        u1 = v1;
+        v1 = t1;
+        u3 = v3;
+        v3 = t3;
+        iter = -iter;
+    }
+    if(u3 != 1)
+        return  0;
+    if(iter < 0)
+        inv = phin - u1;
+    else
+        inv = u1;
+    return inv;
+}
+long int phiFinder(long int n)
+{
+    long int result = n; // Initialize result as n
+
+    // Consider all prime factors of n and subtract their
+    // multiples from result
+    for (int p = 2; p * p <= n; ++p) {
+
+        // Check if p is a prime factor.
+        if (n % p == 0) {
+
+            // If yes, then update n and result
+            while (n % p == 0)
+                n /= p;
+            result -= result / p;
+        }
+    }
+
+    // If n has a prime factor greater than sqrt(n)
+    // (There can be at-most one such prime factor)
+    if (n > 1)
+        result -= result / n;
+    return result;
 }
